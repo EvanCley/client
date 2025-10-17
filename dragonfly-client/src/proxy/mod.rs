@@ -48,7 +48,7 @@ use hyper_util::{
 };
 use lazy_static::lazy_static;
 use rcgen::Certificate;
-use rustls::{RootCertStore, ServerConfig};
+use rustls::RootCertStore;
 use rustls_pki_types::CertificateDer;
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -523,7 +523,7 @@ async fn upgraded_tunnel(
     };
 
     // Build TLS configuration.
-    let mut server_config = ServerConfig::builder()
+    let mut server_config = tokio_rustls::rustls::ServerConfig::builder()
         .with_no_client_auth()
         .with_single_cert(server_certs, server_key)
         .or_err(ErrorType::TLSConfigError)?;
