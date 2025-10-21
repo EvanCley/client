@@ -383,13 +383,24 @@ impl ObjectStorage {
 
         // Initialize the OSS operator with the object storage.
         let mut builder = opendal::services::Oss::default();
-        builder = builder
-            .access_key_id(access_key_id)
-            .access_key_secret(access_key_secret)   
-            .endpoint(endpoint)
-            .http_client(HttpClient::with(self.client.clone()))
-            .root("/")
-            .bucket(&parsed_url.bucket);
+        builder = if let Some(security_token) = &object_storage.security_token {
+            builder
+                .access_key_id(access_key_id)
+                .access_key_secret(access_key_secret)
+                .endpoint(endpoint)
+                .http_client(HttpClient::with(self.client.clone()))
+                .root("/")
+                .bucket(&parsed_url.bucket)
+                .security_token(security_token)
+        } else {
+            builder
+                .access_key_id(access_key_id)
+                .access_key_secret(access_key_secret)
+                .endpoint(endpoint)
+                .http_client(HttpClient::with(self.client.clone()))
+                .root("/")
+                .bucket(&parsed_url.bucket)
+        };
 
         Ok(Operator::new(builder)?
             .finish()
