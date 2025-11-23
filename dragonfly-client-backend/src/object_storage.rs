@@ -178,8 +178,7 @@ pub struct ObjectStorage {
 impl ObjectStorage {
     /// Returns ObjectStorage that implements the Backend trait.
     pub fn new(scheme: Scheme) -> ClientResult<ObjectStorage> {
-        // Initialize the reqwest client.
-        let client = reqwest::Client::builder()
+        let mut client_builder = reqwest::Client::builder()
             .gzip(true)
             .brotli(true)
             .zstd(true)
@@ -193,8 +192,30 @@ impl ObjectStorage {
             .http2_initial_connection_window_size(Some(super::HTTP2_CONNECTION_WINDOW_SIZE))
             .http2_keep_alive_timeout(super::HTTP2_KEEP_ALIVE_TIMEOUT)
             .http2_keep_alive_interval(super::HTTP2_KEEP_ALIVE_INTERVAL)
-            .http2_keep_alive_while_idle(true)
-            .build()?;
+            .http2_keep_alive_while_idle(true);
+
+        // Load additional root certificates from environment variable
+        if let Ok(cert_path) = std::env::var("CUSTOM_ROOT_CERT_PATH") {
+            match std::fs::read(&cert_path) {
+                Ok(cert_pem) => {
+                    match reqwest::Certificate::from_pem(&cert_pem) {
+                        Ok(cert) => {
+                            client_builder = client_builder.add_root_certificate(cert);
+                            debug!("Successfully loaded root certificate from {}", cert_path);
+                        }
+                        Err(err) => {
+                            error!("Failed to parse certificate from {}: {}", cert_path, err);
+                        }
+                    }
+                }
+                Err(err) => {
+                    error!("Failed to read certificate file {}: {}", cert_path, err);
+                }
+            }
+        }
+
+        // Initialize the reqwest client.
+        let client = client_builder.build()?;
 
         Ok(Self { scheme, client })
     }
